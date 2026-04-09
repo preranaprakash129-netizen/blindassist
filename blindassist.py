@@ -260,7 +260,7 @@ def update():
 def show_onboarding():
     win = tk.Tk()
     win.title("BlindAssist — Setup")
-    win.geometry("460x400")
+    win.geometry("460x480")
     win.configure(bg="white")
     win.resizable(False, False)
 
