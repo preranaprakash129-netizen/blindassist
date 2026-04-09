@@ -134,7 +134,7 @@ content.pack(fill="both", expand=True, padx=20)
 cam_border = tk.Frame(content, bg="#333333", padx=2, pady=2)
 cam_border.pack(side="left")
 cam_label = tk.Label(cam_border, bg="#0a0a0a", width=620, height=460,
-                     text="Say  'START'  to begin navigation",
+                     text="Say  'LETSGO WAYFR'  to begin navigation",
                      font=font.Font(family="Courier New", size=16), fg="#444444")
 cam_label.pack()
 
@@ -165,7 +165,7 @@ log_text = tk.Text(log_frame, bg="#111111", fg="#888888",
                    relief="flat", state="disabled", wrap="word", width=24, height=12)
 log_text.pack(fill="both", expand=True)
 
-tk.Label(right, text='Say "start" or "stop"',
+tk.Label(right, text='Say "letsgo wayfr" or "stop wayfr"',
          font=label_font, bg="#0a0a0a", fg="#444444").pack(pady=(8, 0))
 tk.Button(right, text="STOP APP", font=badge_font,
           bg="#FF4444", fg="white", relief="flat",
@@ -197,11 +197,11 @@ def add_log(message):
 # ─── Voice Listener Thread ───────────────────────────────────────────────────
 def voice_listener():
     global is_running
-    speak("BlindAssist ready. Say start to begin navigation.")
+    speak("BlindAssist ready. Say letsgo wayfr to begin navigation.")
     add_log("Listening for voice commands...")
     while True:
         command = listen_for_command(timeout=10)
-       if "letsgo wayfr" in command and not is_running:
+        if "letsgo wayfr" in command and not is_running:
             is_running = True
             live_dot.config(text="LIVE", fg="#FF4444")
             cam_border.config(bg="#00FF94")
@@ -301,7 +301,7 @@ def update():
 
 # ─── Launch ──────────────────────────────────────────────────────────────────
 add_log("BlindAssist v2.0 started.")
-add_log("Say 'start' to begin.")
+add_log("Say 'letsgo wayfr' to begin.")
 root.after(100, update)
 root.mainloop()
 cap.release()
