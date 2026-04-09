@@ -34,7 +34,7 @@ fall_pending      = False
 cap               = None
 root              = None
 
-# UI refs (set during launch_main)
+# UI refs
 cam_label       = None
 cam_border      = None
 status_badge    = None
@@ -53,7 +53,7 @@ def add_log(message):
     log_text.see("end")
     log_text.config(state="disabled")
 
-# ─── Simulated SMS Alert ─────────────────────────────────────────────────────
+# ─── Simulated SMS Alert Popup ───────────────────────────────────────────────
 def simulate_sms_alert():
     name  = emergency_contact["name"]
     phone = emergency_contact["phone"]
@@ -62,7 +62,7 @@ def simulate_sms_alert():
 
     popup = tk.Toplevel(root)
     popup.title("Alert Sent")
-    popup.geometry("400x280")
+    popup.geometry("400x300")
     popup.configure(bg="white")
     popup.resizable(False, False)
     popup.grab_set()
@@ -89,7 +89,7 @@ def simulate_sms_alert():
              bg="white", fg="#636366").pack(anchor="w", pady=(2, 12))
 
     tk.Label(body,
-             text="\"Fall detected. Please check on the user immediately.\"",
+             text='"Fall detected. Please check on the user immediately."',
              font=font.Font(family="Helvetica", size=10),
              bg="#f2f2f7", fg="#3a3a3c",
              wraplength=320, justify="left",
@@ -101,7 +101,7 @@ def simulate_sms_alert():
               padx=12, pady=6, cursor="hand2",
               command=popup.destroy).pack(pady=(14, 0))
 
-# ─── Speech Recognition ─────────────────────────────────────────────────────
+# ─── Speech Recognition ──────────────────────────────────────────────────────
 recognizer = sr.Recognizer()
 
 def listen_for_command(timeout=5):
@@ -115,23 +115,11 @@ def listen_for_command(timeout=5):
         return ""
 
 # ─── Fall Detection ──────────────────────────────────────────────────────────
-def check_for_fall(box_data):
+def trigger_fall_alert(event=None):
     global fall_pending
     if fall_pending:
         return
-    for box in box_data:
-        if box['label'] != 'person':
-            continue
-        x1, y1, x2, y2 = box['coords']
-        height = y2 - y1
-        width  = x2 - x1
-        if width > height * 1.3:
-            fall_pending = True
-            trigger_fall_alert()
-            return
-
-def trigger_fall_alert():
-    global fall_pending
+    fall_pending = True
     speak("Warning. Fall detected. Sending alert in 10 seconds. Say cancel to stop.")
     add_log("Fall detected! Say cancel within 10 seconds.")
     status_badge.config(text="⚠  FALL DETECTED", bg="#FF3B30", fg="white")
@@ -196,7 +184,6 @@ def update():
         results     = model(frame, verbose=False)
         frame_width = frame.shape[1]
         detected    = []
-        box_data    = []
 
         for result in results:
             for box in result.boxes:
@@ -206,6 +193,7 @@ def update():
                     x1, y1, x2, y2 = box.xyxy[0]
                     box_width    = x2 - x1
                     box_center_x = (x1 + x2) / 2
+
                     direction = (
                         "on your left"  if box_center_x < frame_width / 3 else
                         "on your right" if box_center_x > 2 * frame_width / 3 else
@@ -217,13 +205,6 @@ def update():
                         "in the distance"
                     )
                     detected.append((distance, f"{label} {distance} {direction}"))
-                    box_data.append({
-                        'label':  label,
-                        'coords': (float(x1), float(y1), float(x2), float(y2))
-                    })
-
-        if not fall_pending:
-            check_for_fall(box_data)
 
         detected.sort(key=lambda x: (
             0 if "immediately" in x[0] else
@@ -342,14 +323,17 @@ def launch_main():
     mono_f  = font.Font(family="Courier New", size=9)
 
     def stop_navigation():
-        global is_running
-        is_running = False
+        global is_running, last_detected, fall_pending
+        is_running    = False
+        fall_pending  = False
+        last_detected = []
         status_badge.config(text="○  STANDBY", bg="#e5e5ea", fg="#636366")
         cam_border.config(bg="white")
         status_icon_lbl.config(text="🎤")
         status_text.config(text="Waiting for\nvoice command", fg="#8e8e93")
-        speak("Navigation paused.")
-        add_log("Navigation paused.")
+        speak("Navigation stopped.")
+        add_log("Navigation stopped.")
+
     # Top bar
     topbar = tk.Frame(root, bg="white", pady=12, padx=24)
     topbar.pack(fill="x")
@@ -362,12 +346,12 @@ def launch_main():
                              fg="#636366", padx=12, pady=5)
     status_badge.pack(side="left", padx=8)
     tk.Button(topbar, text="⏹  Stop Navigation", font=badge_f,
-          bg="#FF9500", fg="white", relief="flat",
-          padx=12, pady=5, cursor="hand2",
-          command=stop_navigation).pack(side="right", padx=8)
+              bg="#FF9500", fg="white", relief="flat",
+              padx=12, pady=5, cursor="hand2",
+              command=stop_navigation).pack(side="right", padx=8)
     tk.Frame(root, bg="#e5e5ea", height=1).pack(fill="x")
 
-    # Content
+    # Content area
     content = tk.Frame(root, bg="#f2f2f7", padx=20, pady=16)
     content.pack(fill="both", expand=True)
 
@@ -404,7 +388,7 @@ def launch_main():
 
     tk.Frame(right, bg="#e5e5ea", height=1).pack(fill="x", pady=14)
 
-    # Contact card
+    # Emergency contact card
     tk.Label(right, text="EMERGENCY CONTACT", font=small_f,
              bg="#f2f2f7", fg="#8e8e93").pack(anchor="w", pady=(0, 4))
     contact_card = tk.Frame(right, bg="white", padx=16, pady=12,
@@ -433,17 +417,21 @@ def launch_main():
     footer = tk.Frame(root, bg="white", pady=8, padx=24)
     footer.pack(fill="x")
     tk.Label(footer,
-             text='🎤  "start navigation" to begin  •  "stop navigation" to pause  •  "cancel" to stop fall alert',
+             text='🎤 "start navigation" to begin  •  "stop navigation" to pause  •  Press F to simulate fall',
              font=small_f, bg="white", fg="#8e8e93").pack(side="left")
     fps_label = tk.Label(footer, text="FPS: --", font=small_f,
                           bg="white", fg="#c7c7cc")
     fps_label.pack(side="right")
 
-    # Open camera and start
+    # Bind F key to simulate fall for demo
+    root.bind('<f>', trigger_fall_alert)
+
+    # Open camera and start threads
     cap = cv2.VideoCapture(0)  # Change to 1 for iPhone via DroidCam
     threading.Thread(target=voice_listener, daemon=True).start()
     add_log("BlindAssist v2.0 started.")
     add_log(f"Contact: {emergency_contact['name']} — {emergency_contact['phone']}")
+    add_log("Press F key to simulate fall detection.")
     root.after(100, update)
     root.mainloop()
     cap.release()
