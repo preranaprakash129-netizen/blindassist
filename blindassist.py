@@ -2,13 +2,11 @@ import cv2
 import pyttsx3
 import time
 import tkinter as tk
-from tkinter import font
+from tkinter import font, messagebox
 from PIL import Image, ImageTk
 from ultralytics import YOLO
 import threading
 import speech_recognition as sr
-import smtplib
-from email.mime.text import MIMEText
 
 # ─── Load Model ─────────────────────────────────────────────────────────────
 model = YOLO("yolov8n.pt")
@@ -26,32 +24,58 @@ def speak(text):
             engine.runAndWait()
     threading.Thread(target=_speak, daemon=True).start()
 
-# ─── Email Config — UPDATE THESE ────────────────────────────────────────────
-SENDER_EMAIL    = "preranaprakash129@gmail.com"
-SENDER_PASSWORD = "pgob yhus mabf nbfu"
-EMERGENCY_EMAIL = "bsugunarao@gmail.com"
-USER_NAME       = "the user"
+# ─── Emergency Contact (filled during onboarding) ────────────────────────────
+emergency_contact = {"name": "", "phone": ""}
 
-def send_emergency_alert():
-    try:
-        msg = MIMEText(
-            f"EMERGENCY ALERT\n\n"
-            f"{USER_NAME} has fallen and may need help.\n"
-            f"This alert was sent automatically by BlindAssist.\n\n"
-            f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"Please check on them immediately."
-        )
-        msg['Subject'] = "BlindAssist Emergency Alert - Fall Detected"
-        msg['From']    = SENDER_EMAIL
-        msg['To']      = EMERGENCY_EMAIL
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.sendmail(SENDER_EMAIL, EMERGENCY_EMAIL, msg.as_string())
-        speak("Emergency alert sent to your contact.")
-        add_log("Emergency alert sent.")
-    except Exception as e:
-        add_log(f"Alert failed: {e}")
-        speak("Could not send alert. Please call for help.")
+def simulate_sms_alert():
+    name  = emergency_contact["name"]
+    phone = emergency_contact["phone"]
+    speak(f"Emergency alert sent to {name}.")
+    add_log(f"SMS sent to {name} at {phone}.")
+
+    # Show a popup simulating the SMS being sent
+    popup = tk.Toplevel(root)
+    popup.title("Alert Sent")
+    popup.geometry("400x260")
+    popup.configure(bg="white")
+    popup.resizable(False, False)
+    popup.grab_set()
+
+    tk.Frame(popup, bg="#FF3B30", height=6).pack(fill="x")
+
+    body = tk.Frame(popup, bg="white", padx=30, pady=24)
+    body.pack(fill="both", expand=True)
+
+    tk.Label(body, text="🚨  Emergency Alert Sent",
+             font=font.Font(family="Helvetica", size=14, weight="bold"),
+             bg="white", fg="#1c1c1e").pack(anchor="w")
+
+    tk.Frame(body, bg="#e5e5ea", height=1).pack(fill="x", pady=12)
+
+    tk.Label(body, text=f"📱  SMS sent to {name}",
+             font=font.Font(family="Helvetica", size=11),
+             bg="white", fg="#3a3a3c").pack(anchor="w")
+    tk.Label(body, text=f"    {phone}",
+             font=font.Font(family="Helvetica", size=11),
+             bg="white", fg="#8e8e93").pack(anchor="w", pady=(2, 0))
+
+    tk.Label(body,
+             text=f"    Time: {time.strftime('%H:%M:%S')}",
+             font=font.Font(family="Helvetica", size=11),
+             bg="white", fg="#8e8e93").pack(anchor="w", pady=(2, 16))
+
+    tk.Label(body,
+             text="Message: Fall detected. Please check on the user\nimmediately.",
+             font=font.Font(family="Helvetica", size=10),
+             bg="#f2f2f7", fg="#3a3a3c",
+             wraplength=320, justify="left",
+             padx=10, pady=8).pack(fill="x")
+
+    tk.Button(body, text="Dismiss",
+              font=font.Font(family="Helvetica", size=11, weight="bold"),
+              bg="#007AFF", fg="white", relief="flat",
+              padx=12, pady=6, cursor="hand2",
+              command=popup.destroy).pack(pady=(16, 0))
 
 # ─── Speech Recognition ─────────────────────────────────────────────────────
 recognizer = sr.Recognizer()
@@ -85,10 +109,10 @@ def check_for_fall(box_data):
             return
 
 def trigger_fall_alert():
-    speak("Warning. Fall detected. Sending emergency alert in 10 seconds. Say cancel to stop.")
-    add_log("Fall detected! Say cancel within 10 seconds to stop alert.")
-    status_icon.config(text="SOS")
-    status_text.config(text="Fall Detected!\nSay CANCEL to stop", fg="#FF4444")
+    speak("Warning. Fall detected. Sending alert in 10 seconds. Say cancel to stop.")
+    add_log("Fall detected! Say cancel within 10 seconds.")
+    status_badge.config(text="⚠  FALL DETECTED", bg="#FF3B30", fg="white")
+    status_text.config(text="Say  CANCEL  to stop alert", fg="#FF3B30")
 
     def countdown():
         global fall_pending
@@ -97,211 +121,328 @@ def trigger_fall_alert():
             fall_pending = False
             speak("Alert cancelled.")
             add_log("Alert cancelled by user.")
-            status_icon.config(text="OK")
-            status_text.config(text="Path is clear", fg="#00FF94")
+            status_badge.config(text="●  LIVE", bg="#34C759", fg="white")
+            status_text.config(text="Path is clear", fg="#34C759")
         else:
-            add_log("No cancel received. Sending alert...")
-            send_emergency_alert()
+            add_log("No cancel — sending alert...")
+            root.after(0, simulate_sms_alert)
             fall_pending = False
 
     threading.Thread(target=countdown, daemon=True).start()
 
-# ─── UI ──────────────────────────────────────────────────────────────────────
-root = tk.Tk()
-root.title("BlindAssist Navigation")
-root.configure(bg="#0a0a0a")
-root.geometry("900x660")
-root.resizable(False, False)
-
-title_font  = font.Font(family="Courier New", size=22, weight="bold")
-status_font = font.Font(family="Courier New", size=13)
-label_font  = font.Font(family="Courier New", size=10)
-badge_font  = font.Font(family="Courier New", size=11, weight="bold")
-
-header = tk.Frame(root, bg="#0a0a0a", pady=10)
-header.pack(fill="x", padx=20)
-tk.Label(header, text="BLINDASSIST", font=title_font,
-         bg="#0a0a0a", fg="#00FF94").pack(side="left")
-tk.Label(header, text="NAVIGATION SYSTEM  v2.0", font=label_font,
-         bg="#0a0a0a", fg="#444444").pack(side="left", padx=16, pady=6)
-live_dot = tk.Label(header, text="STANDBY", font=badge_font,
-                    bg="#0a0a0a", fg="#888888")
-live_dot.pack(side="right")
-
-content = tk.Frame(root, bg="#0a0a0a")
-content.pack(fill="both", expand=True, padx=20)
-
-cam_border = tk.Frame(content, bg="#333333", padx=2, pady=2)
-cam_border.pack(side="left")
-cam_label = tk.Label(cam_border, bg="#0a0a0a", width=620, height=460,
-                     text="Say  'LETSGO WAYFR'  to begin navigation",
-                     font=font.Font(family="Courier New", size=16), fg="#444444")
-cam_label.pack()
-
-right = tk.Frame(content, bg="#0a0a0a", width=260, padx=16)
-right.pack(side="right", fill="y")
-right.pack_propagate(False)
-
-tk.Label(right, text="STATUS", font=label_font,
-         bg="#0a0a0a", fg="#444444").pack(anchor="w", pady=(10, 4))
-status_box = tk.Frame(right, bg="#111111", padx=12, pady=12)
-status_box.pack(fill="x")
-status_icon = tk.Label(status_box, text="MIC",
-                        font=font.Font(family="Courier New", size=20, weight="bold"),
-                        bg="#111111", fg="#888888")
-status_icon.pack()
-status_text = tk.Label(status_box, text="Waiting for voice\ncommand...",
-                        font=status_font, bg="#111111",
-                        fg="#888888", wraplength=200, justify="center")
-status_text.pack(pady=(6, 0))
-
-tk.Frame(right, bg="#222222", height=1).pack(fill="x", pady=14)
-tk.Label(right, text="DETECTION LOG", font=label_font,
-         bg="#0a0a0a", fg="#444444").pack(anchor="w", pady=(0, 6))
-log_frame = tk.Frame(right, bg="#111111", padx=10, pady=10)
-log_frame.pack(fill="both", expand=True)
-log_text = tk.Text(log_frame, bg="#111111", fg="#888888",
-                   font=font.Font(family="Courier New", size=9),
-                   relief="flat", state="disabled", wrap="word", width=24, height=12)
-log_text.pack(fill="both", expand=True)
-
-tk.Label(right, text='Say "letsgo wayfr" or "stop wayfr"',
-         font=label_font, bg="#0a0a0a", fg="#444444").pack(pady=(8, 0))
-tk.Button(right, text="STOP APP", font=badge_font,
-          bg="#FF4444", fg="white", relief="flat",
-          padx=10, pady=6, cursor="hand2",
-          command=root.destroy).pack(fill="x", pady=(8, 10))
-
-footer = tk.Frame(root, bg="#0a0a0a", pady=6)
-footer.pack(fill="x", padx=20)
-tk.Label(footer, text="Smartphone Mode  |  Offline Voice  |  YOLOv8  |  Fall Detection",
-         font=label_font, bg="#0a0a0a", fg="#333333").pack(side="left")
-fps_label = tk.Label(footer, text="FPS: --", font=label_font,
-                     bg="#0a0a0a", fg="#333333")
-fps_label.pack(side="right")
-
-# ─── State ───────────────────────────────────────────────────────────────────
-is_running    = False
-last_detected = []
-frame_count   = 0
-fps_time      = time.time()
-cap           = cv2.VideoCapture(0)  # Change to 1 for iPhone via DroidCam
-
+# ─── Placeholder until main window loads ─────────────────────────────────────
 def add_log(message):
-    timestamp = time.strftime("%H:%M:%S")
-    log_text.config(state="normal")
-    log_text.insert("end", f"[{timestamp}] {message}\n")
-    log_text.see("end")
-    log_text.config(state="disabled")
+    pass
 
-# ─── Voice Listener Thread ───────────────────────────────────────────────────
-def voice_listener():
-    global is_running
-    speak("BlindAssist ready. Say letsgo wayfr to begin navigation.")
-    add_log("Listening for voice commands...")
-    while True:
-        command = listen_for_command(timeout=10)
-        if "letsgo wayfr" in command and not is_running:
-            is_running = True
-            live_dot.config(text="LIVE", fg="#FF4444")
-            cam_border.config(bg="#00FF94")
-            status_icon.config(text="OK", fg="#00FF94")
-            status_text.config(text="Path is clear", fg="#00FF94")
-            speak("Navigation started. I will alert you of obstacles ahead.")
-            add_log("Navigation started.")
-        elif "stop wayfr" in command and is_running:
-            is_running = False
-            live_dot.config(text="STANDBY", fg="#888888")
-            cam_border.config(bg="#333333")
-            status_icon.config(text="MIC", fg="#888888")
-            status_text.config(text="Waiting for voice\ncommand...", fg="#888888")
-            speak("Navigation paused. Say letsgo wayfr to resume.")
-            add_log("Navigation paused.")
+# ─── Onboarding Window ───────────────────────────────────────────────────────
+def show_onboarding():
+    win = tk.Tk()
+    win.title("BlindAssist — Setup")
+    win.geometry("460x400")
+    win.configure(bg="white")
+    win.resizable(False, False)
 
-threading.Thread(target=voice_listener, daemon=True).start()
+    # Header
+    hdr = tk.Frame(win, bg="#007AFF", pady=24)
+    hdr.pack(fill="x")
+    tk.Label(hdr, text="BlindAssist",
+             font=font.Font(family="Helvetica", size=24, weight="bold"),
+             bg="#007AFF", fg="white").pack()
+    tk.Label(hdr, text="Navigation for the visually impaired",
+             font=font.Font(family="Helvetica", size=11),
+             bg="#007AFF", fg="#cce4ff").pack(pady=(2, 0))
 
-# ─── Main Loop ───────────────────────────────────────────────────────────────
-def update():
-    global last_detected, frame_count, fps_time
+    # Body
+    body = tk.Frame(win, bg="white", padx=40, pady=28)
+    body.pack(fill="both", expand=True)
 
-    ret, frame = cap.read()
-    if not ret:
+    tk.Label(body, text="Emergency Contact Setup",
+             font=font.Font(family="Helvetica", size=14, weight="bold"),
+             bg="white", fg="#1c1c1e").pack(anchor="w")
+    tk.Label(body,
+             text="This person will be alerted if a fall is detected.",
+             font=font.Font(family="Helvetica", size=10),
+             bg="white", fg="#8e8e93").pack(anchor="w", pady=(2, 20))
+
+    tk.Label(body, text="Contact Name",
+             font=font.Font(family="Helvetica", size=10, weight="bold"),
+             bg="white", fg="#3a3a3c").pack(anchor="w")
+    name_var   = tk.StringVar()
+    name_entry = tk.Entry(body, textvariable=name_var,
+                          font=font.Font(family="Helvetica", size=12),
+                          relief="flat", bg="#f2f2f7", fg="#1c1c1e",
+                          insertbackground="#007AFF")
+    name_entry.pack(fill="x", ipady=9, pady=(3, 14))
+
+    tk.Label(body, text="Phone Number  (10 digits)",
+             font=font.Font(family="Helvetica", size=10, weight="bold"),
+             bg="white", fg="#3a3a3c").pack(anchor="w")
+    phone_var   = tk.StringVar()
+    phone_entry = tk.Entry(body, textvariable=phone_var,
+                           font=font.Font(family="Helvetica", size=12),
+                           relief="flat", bg="#f2f2f7", fg="#1c1c1e",
+                           insertbackground="#007AFF")
+    phone_entry.pack(fill="x", ipady=9, pady=(3, 24))
+
+    def submit():
+        name  = name_var.get().strip()
+        phone = phone_var.get().strip()
+        if not name or not phone or len(phone) != 10 or not phone.isdigit():
+            messagebox.showerror("Invalid Input",
+                                 "Please enter a valid name and 10-digit phone number.")
+            return
+        emergency_contact["name"]  = name
+        emergency_contact["phone"] = phone
+        win.destroy()
+        launch_main()
+
+    tk.Button(body, text="Start BlindAssist  →",
+              font=font.Font(family="Helvetica", size=12, weight="bold"),
+              bg="#007AFF", fg="white", relief="flat",
+              padx=16, pady=10, cursor="hand2",
+              command=submit).pack(fill="x")
+
+    win.mainloop()
+
+# ─── Main App ────────────────────────────────────────────────────────────────
+def launch_main():
+    global root, cam_label, cam_border
+    global status_badge, status_text, status_icon_lbl
+    global log_text, fps_label, add_log
+    global is_running, last_detected, frame_count, fps_time, cap
+
+    root = tk.Tk()
+    root.title("BlindAssist")
+    root.configure(bg="#f2f2f7")
+    root.geometry("980x640")
+    root.resizable(False, False)
+
+    h1      = font.Font(family="Helvetica", size=18, weight="bold")
+    body_f  = font.Font(family="Helvetica", size=11)
+    small_f = font.Font(family="Helvetica", size=9)
+    badge_f = font.Font(family="Helvetica", size=10, weight="bold")
+    mono_f  = font.Font(family="Courier New", size=9)
+
+    # ── Top Bar ──────────────────────────────────────────────────────────────
+    topbar = tk.Frame(root, bg="white", pady=12, padx=24)
+    topbar.pack(fill="x")
+
+    tk.Label(topbar, text="BlindAssist", font=h1,
+             bg="white", fg="#1c1c1e").pack(side="left")
+    tk.Label(topbar, text="Navigation System  v2.0", font=body_f,
+             bg="white", fg="#8e8e93").pack(side="left", padx=12)
+
+    status_badge = tk.Label(topbar, text="○  STANDBY",
+                             font=badge_f, bg="#e5e5ea",
+                             fg="#636366", padx=12, pady=5)
+    status_badge.pack(side="left", padx=8)
+
+    tk.Button(topbar, text="✕  Quit", font=badge_f,
+              bg="#FF3B30", fg="white", relief="flat",
+              padx=12, pady=5, cursor="hand2",
+              command=root.destroy).pack(side="right")
+
+    tk.Frame(root, bg="#e5e5ea", height=1).pack(fill="x")
+
+    # ── Content ──────────────────────────────────────────────────────────────
+    content = tk.Frame(root, bg="#f2f2f7", padx=20, pady=16)
+    content.pack(fill="both", expand=True)
+
+    # Camera panel
+    cam_outer  = tk.Frame(content, bg="#e5e5ea", padx=1, pady=1)
+    cam_outer.pack(side="left")
+    cam_border = tk.Frame(cam_outer, bg="white", padx=3, pady=3)
+    cam_border.pack()
+    cam_label  = tk.Label(cam_border, bg="#1c1c1e", width=640, height=480,
+                           text='Say  "start wayfr"  to begin',
+                           font=font.Font(family="Helvetica", size=14),
+                           fg="#636366")
+    cam_label.pack()
+
+    # Right panel
+    right = tk.Frame(content, bg="#f2f2f7", width=270, padx=16)
+    right.pack(side="right", fill="y")
+    right.pack_propagate(False)
+
+    # Status card
+    tk.Label(right, text="STATUS", font=small_f,
+             bg="#f2f2f7", fg="#8e8e93").pack(anchor="w", pady=(0, 4))
+    status_card = tk.Frame(right, bg="white", padx=16, pady=16,
+                            highlightbackground="#e5e5ea", highlightthickness=1)
+    status_card.pack(fill="x")
+    status_icon_lbl = tk.Label(status_card, text="🎤",
+                                font=font.Font(family="Helvetica", size=30),
+                                bg="white")
+    status_icon_lbl.pack()
+    status_text = tk.Label(status_card, text="Waiting for\nvoice command",
+                            font=body_f, bg="white", fg="#8e8e93",
+                            wraplength=210, justify="center")
+    status_text.pack(pady=(6, 0))
+
+    tk.Frame(right, bg="#e5e5ea", height=1).pack(fill="x", pady=14)
+
+    # Contact card
+    tk.Label(right, text="EMERGENCY CONTACT", font=small_f,
+             bg="#f2f2f7", fg="#8e8e93").pack(anchor="w", pady=(0, 4))
+    contact_card = tk.Frame(right, bg="white", padx=16, pady=12,
+                             highlightbackground="#e5e5ea", highlightthickness=1)
+    contact_card.pack(fill="x")
+    tk.Label(contact_card, text=f"👤  {emergency_contact['name']}",
+             font=body_f, bg="white", fg="#1c1c1e").pack(anchor="w")
+    tk.Label(contact_card, text=f"📱  {emergency_contact['phone']}",
+             font=body_f, bg="white", fg="#636366").pack(anchor="w", pady=(4, 0))
+
+    tk.Frame(right, bg="#e5e5ea", height=1).pack(fill="x", pady=14)
+
+    # Activity log
+    tk.Label(right, text="ACTIVITY LOG", font=small_f,
+             bg="#f2f2f7", fg="#8e8e93").pack(anchor="w", pady=(0, 4))
+    log_card = tk.Frame(right, bg="white", padx=10, pady=10,
+                         highlightbackground="#e5e5ea", highlightthickness=1)
+    log_card.pack(fill="both", expand=True)
+    log_text = tk.Text(log_card, bg="white", fg="#3a3a3c",
+                        font=mono_f, relief="flat",
+                        state="disabled", wrap="word", width=26, height=10)
+    log_text.pack(fill="both", expand=True)
+
+    # Footer
+    tk.Frame(root, bg="#e5e5ea", height=1).pack(fill="x")
+    footer = tk.Frame(root, bg="white", pady=8, padx=24)
+    footer.pack(fill="x")
+    tk.Label(footer,
+             text='🎤  "start wayfr" to begin  •  "stop wayfr" to pause  •  "cancel" to stop fall alert',
+             font=small_f, bg="white", fg="#8e8e93").pack(side="left")
+    fps_label = tk.Label(footer, text="FPS: --", font=small_f,
+                          bg="white", fg="#c7c7cc")
+    fps_label.pack(side="right")
+
+    # ── State ────────────────────────────────────────────────────────────────
+    is_running    = False
+    last_detected = []
+    frame_count   = 0
+    fps_time      = time.time()
+    cap           = cv2.VideoCapture(0)  # Change to 1 for iPhone via DroidCam
+
+    def add_log(message):
+        timestamp = time.strftime("%H:%M")
+        log_text.config(state="normal")
+        log_text.insert("end", f"[{timestamp}] {message}\n")
+        log_text.see("end")
+        log_text.config(state="disabled")
+
+    import builtins
+    builtins.add_log = add_log
+
+    # ── Voice Listener ───────────────────────────────────────────────────────
+    def voice_listener():
+        nonlocal is_running
+        speak("BlindAssist ready. Say start wayfr to begin navigation.")
+        add_log("Ready — listening for commands.")
+        while True:
+            command = listen_for_command(timeout=10)
+            if "start wayfr" in command and not is_running:
+                is_running = True
+                status_badge.config(text="●  LIVE", bg="#34C759", fg="white")
+                cam_border.config(bg="#34C759")
+                status_icon_lbl.config(text="👁")
+                status_text.config(text="Scanning for\nobstacles...", fg="#34C759")
+                speak("Navigation started. I will alert you of obstacles ahead.")
+                add_log("Navigation started.")
+            elif "stop wayfr" in command and is_running:
+                is_running = False
+                status_badge.config(text="○  STANDBY", bg="#e5e5ea", fg="#636366")
+                cam_border.config(bg="white")
+                status_icon_lbl.config(text="🎤")
+                status_text.config(text="Waiting for\nvoice command", fg="#8e8e93")
+                speak("Navigation paused. Say start wayfr to resume.")
+                add_log("Navigation paused.")
+
+    threading.Thread(target=voice_listener, daemon=True).start()
+
+    # ── Main Loop ────────────────────────────────────────────────────────────
+    def update():
+        nonlocal last_detected, frame_count, fps_time
+
+        ret, frame = cap.read()
+        if not ret:
+            root.after(30, update)
+            return
+
+        frame_count += 1
+        if time.time() - fps_time >= 1.0:
+            fps_label.config(text=f"FPS: {frame_count}")
+            frame_count = 0
+            fps_time = time.time()
+
+        if is_running:
+            results     = model(frame, verbose=False)
+            frame_width = frame.shape[1]
+            detected    = []
+            box_data    = []
+
+            for result in results:
+                for box in result.boxes:
+                    label      = model.names[int(box.cls)]
+                    confidence = float(box.conf)
+                    if confidence > 0.7:
+                        x1, y1, x2, y2 = box.xyxy[0]
+                        box_width    = x2 - x1
+                        box_center_x = (x1 + x2) / 2
+                        direction = (
+                            "on your left"  if box_center_x < frame_width / 3 else
+                            "on your right" if box_center_x > 2 * frame_width / 3 else
+                            "in the centre"
+                        )
+                        distance = (
+                            "immediately ahead" if box_width > frame_width * 0.4 else
+                            "nearby"            if box_width > frame_width * 0.2 else
+                            "in the distance"
+                        )
+                        detected.append((distance, f"{label} {distance} {direction}"))
+                        box_data.append({
+                            'label':  label,
+                            'coords': (float(x1), float(y1), float(x2), float(y2))
+                        })
+
+            if not fall_pending:
+                check_for_fall(box_data)
+
+            detected.sort(key=lambda x: (
+                0 if "immediately" in x[0] else
+                1 if "nearby"      in x[0] else 2
+            ))
+            unique = sorted(set([d[1] for d in detected]))
+
+            if unique and unique != last_detected:
+                top     = [d[1] for d in detected[:2]]
+                message = "Warning. " + ". ".join(top)
+                speak(message)
+                add_log(message)
+                status_icon_lbl.config(text="⚠️")
+                status_text.config(text="\n".join(top), fg="#FF3B30")
+                last_detected = unique
+            elif not detected and last_detected:
+                speak("Path is clear")
+                add_log("Path is clear")
+                status_icon_lbl.config(text="✅")
+                status_text.config(text="Path is clear", fg="#34C759")
+                last_detected = []
+
+            annotated     = results[0].plot()
+            annotated_rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+            img           = Image.fromarray(annotated_rgb)
+            img           = img.resize((640, 480))
+            imgtk         = ImageTk.PhotoImage(image=img)
+            cam_label.imgtk = imgtk
+            cam_label.config(image=imgtk, text="")
+
         root.after(30, update)
-        return
 
-    frame_count += 1
-    if time.time() - fps_time >= 1.0:
-        fps_label.config(text=f"FPS: {frame_count}")
-        frame_count = 0
-        fps_time = time.time()
+    add_log("BlindAssist v2.0 started.")
+    add_log(f"Contact: {emergency_contact['name']} — {emergency_contact['phone']}")
+    root.after(100, update)
+    root.mainloop()
+    cap.release()
 
-    if is_running:
-        results     = model(frame, verbose=False)
-        frame_width = frame.shape[1]
-        detected    = []
-        box_data    = []
-
-        for result in results:
-            for box in result.boxes:
-                label      = model.names[int(box.cls)]
-                confidence = float(box.conf)
-                if confidence > 0.7:
-                    x1, y1, x2, y2 = box.xyxy[0]
-                    box_width    = x2 - x1
-                    box_center_x = (x1 + x2) / 2
-                    direction = (
-                        "on your left"  if box_center_x < frame_width / 3 else
-                        "on your right" if box_center_x > 2 * frame_width / 3 else
-                        "in the centre"
-                    )
-                    distance = (
-                        "immediately ahead" if box_width > frame_width * 0.4 else
-                        "nearby"            if box_width > frame_width * 0.2 else
-                        "in the distance"
-                    )
-                    detected.append((distance, f"{label} {distance} {direction}"))
-                    box_data.append({
-                        'label':  label,
-                        'coords': (float(x1), float(y1), float(x2), float(y2))
-                    })
-
-        if not fall_pending:
-            check_for_fall(box_data)
-
-        detected.sort(key=lambda x: (
-            0 if "immediately" in x[0] else
-            1 if "nearby"      in x[0] else 2
-        ))
-        unique = sorted(set([d[1] for d in detected]))
-
-        if unique and unique != last_detected:
-            top     = [d[1] for d in detected[:2]]
-            message = "Warning. " + ". ".join(top)
-            speak(message)
-            add_log(message)
-            status_icon.config(text="!!", fg="#FF4444")
-            status_text.config(text="\n".join(top), fg="#FF4444")
-            last_detected = unique
-        elif not detected and last_detected:
-            speak("Path is clear")
-            add_log("Path is clear")
-            status_icon.config(text="OK", fg="#00FF94")
-            status_text.config(text="Path is clear", fg="#00FF94")
-            last_detected = []
-
-        annotated     = results[0].plot()
-        annotated_rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
-        img           = Image.fromarray(annotated_rgb)
-        img           = img.resize((620, 460))
-        imgtk         = ImageTk.PhotoImage(image=img)
-        cam_label.imgtk = imgtk
-        cam_label.config(image=imgtk, text="")
-
-    root.after(30, update)
-
-# ─── Launch ──────────────────────────────────────────────────────────────────
-add_log("BlindAssist v2.0 started.")
-add_log("Say 'letsgo wayfr' to begin.")
-root.after(100, update)
-root.mainloop()
-cap.release()
+# ─── Entry Point ─────────────────────────────────────────────────────────────
+show_onboarding()
