@@ -156,11 +156,11 @@ def trigger_fall_alert():
 # ─── Voice Listener ──────────────────────────────────────────────────────────
 def voice_listener():
     global is_running
-    speak("BlindAssist ready. Say start wayfr to begin navigation.")
+    speak("BlindAssist ready. Say start navigation to begin.")
     add_log("Ready — listening for commands.")
     while True:
         command = listen_for_command(timeout=10)
-        if "start wayfr" in command and not is_running:
+        if "start navigation" in command and not is_running:
             is_running = True
             status_badge.config(text="●  LIVE", bg="#34C759", fg="white")
             cam_border.config(bg="#34C759")
@@ -168,13 +168,13 @@ def voice_listener():
             status_text.config(text="Scanning for\nobstacles...", fg="#34C759")
             speak("Navigation started. I will alert you of obstacles ahead.")
             add_log("Navigation started.")
-        elif "stop wayfr" in command and is_running:
+        elif "stop navigation" in command and is_running:
             is_running = False
             status_badge.config(text="○  STANDBY", bg="#e5e5ea", fg="#636366")
             cam_border.config(bg="white")
             status_icon_lbl.config(text="🎤")
             status_text.config(text="Waiting for\nvoice command", fg="#8e8e93")
-            speak("Navigation paused. Say start wayfr to resume.")
+            speak("Navigation paused. Say start navigation to resume.")
             add_log("Navigation paused.")
 
 # ─── Camera Update Loop ──────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ def show_onboarding():
     tk.Label(body, text="Contact Name",
              font=font.Font(family="Helvetica", size=10, weight="bold"),
              bg="white", fg="#3a3a3c").pack(anchor="w")
-    name_var   = tk.StringVar()
+    name_var = tk.StringVar()
     tk.Entry(body, textvariable=name_var,
              font=font.Font(family="Helvetica", size=12),
              relief="flat", bg="#f2f2f7", fg="#1c1c1e",
@@ -296,7 +296,7 @@ def show_onboarding():
     tk.Label(body, text="Phone Number  (10 digits)",
              font=font.Font(family="Helvetica", size=10, weight="bold"),
              bg="white", fg="#3a3a3c").pack(anchor="w")
-    phone_var  = tk.StringVar()
+    phone_var = tk.StringVar()
     tk.Entry(body, textvariable=phone_var,
              font=font.Font(family="Helvetica", size=12),
              relief="flat", bg="#f2f2f7", fg="#1c1c1e",
@@ -368,7 +368,7 @@ def launch_main():
     cam_border = tk.Frame(cam_outer, bg="white", padx=3, pady=3)
     cam_border.pack()
     cam_label  = tk.Label(cam_border, bg="#1c1c1e", width=640, height=480,
-                           text='Say  "start wayfr"  to begin',
+                           text='Say  "start navigation"  to begin',
                            font=font.Font(family="Helvetica", size=14),
                            fg="#636366")
     cam_label.pack()
@@ -424,16 +424,14 @@ def launch_main():
     footer = tk.Frame(root, bg="white", pady=8, padx=24)
     footer.pack(fill="x")
     tk.Label(footer,
-             text='🎤  "start wayfr" to begin  •  "stop wayfr" to pause  •  "cancel" to stop fall alert',
+             text='🎤  "start navigation" to begin  •  "stop navigation" to pause  •  "cancel" to stop fall alert',
              font=small_f, bg="white", fg="#8e8e93").pack(side="left")
     fps_label = tk.Label(footer, text="FPS: --", font=small_f,
                           bg="white", fg="#c7c7cc")
     fps_label.pack(side="right")
 
-    # Open camera
+    # Open camera and start
     cap = cv2.VideoCapture(0)  # Change to 1 for iPhone via DroidCam
-
-    # Start voice listener and camera loop
     threading.Thread(target=voice_listener, daemon=True).start()
     add_log("BlindAssist v2.0 started.")
     add_log(f"Contact: {emergency_contact['name']} — {emergency_contact['phone']}")
