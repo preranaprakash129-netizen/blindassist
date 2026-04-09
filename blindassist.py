@@ -341,6 +341,15 @@ def launch_main():
     badge_f = font.Font(family="Helvetica", size=10, weight="bold")
     mono_f  = font.Font(family="Courier New", size=9)
 
+    def stop_navigation():
+        global is_running
+        is_running = False
+        status_badge.config(text="○  STANDBY", bg="#e5e5ea", fg="#636366")
+        cam_border.config(bg="white")
+        status_icon_lbl.config(text="🎤")
+        status_text.config(text="Waiting for\nvoice command", fg="#8e8e93")
+        speak("Navigation paused.")
+        add_log("Navigation paused.")
     # Top bar
     topbar = tk.Frame(root, bg="white", pady=12, padx=24)
     topbar.pack(fill="x")
@@ -352,10 +361,10 @@ def launch_main():
                              font=badge_f, bg="#e5e5ea",
                              fg="#636366", padx=12, pady=5)
     status_badge.pack(side="left", padx=8)
-    tk.Button(topbar, text="✕  Quit", font=badge_f,
-              bg="#FF3B30", fg="white", relief="flat",
-              padx=12, pady=5, cursor="hand2",
-              command=root.destroy).pack(side="right")
+    tk.Button(topbar, text="⏹  Stop Navigation", font=badge_f,
+          bg="#FF9500", fg="white", relief="flat",
+          padx=12, pady=5, cursor="hand2",
+          command=stop_navigation).pack(side="right", padx=8)
     tk.Frame(root, bg="#e5e5ea", height=1).pack(fill="x")
 
     # Content
