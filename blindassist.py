@@ -28,7 +28,7 @@ def speak(text):
 
 # ─── Email Config — UPDATE THESE ────────────────────────────────────────────
 SENDER_EMAIL    = "preranaprakash129@gmail.com"
-SENDER_PASSWORD = "your_app_password"
+SENDER_PASSWORD = "pgob yhus mabf nbfu"
 EMERGENCY_EMAIL = "bsugunarao@gmail.com"
 USER_NAME       = "the user"
 
