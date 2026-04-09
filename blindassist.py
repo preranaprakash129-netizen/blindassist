@@ -201,7 +201,7 @@ def voice_listener():
     add_log("Listening for voice commands...")
     while True:
         command = listen_for_command(timeout=10)
-        if "start" in command and not is_running:
+       if "letsgo wayfr" in command and not is_running:
             is_running = True
             live_dot.config(text="LIVE", fg="#FF4444")
             cam_border.config(bg="#00FF94")
@@ -209,13 +209,13 @@ def voice_listener():
             status_text.config(text="Path is clear", fg="#00FF94")
             speak("Navigation started. I will alert you of obstacles ahead.")
             add_log("Navigation started.")
-        elif "stop" in command and is_running:
+        elif "stop wayfr" in command and is_running:
             is_running = False
             live_dot.config(text="STANDBY", fg="#888888")
             cam_border.config(bg="#333333")
             status_icon.config(text="MIC", fg="#888888")
             status_text.config(text="Waiting for voice\ncommand...", fg="#888888")
-            speak("Navigation paused. Say start to resume.")
+            speak("Navigation paused. Say letsgo wayfr to resume.")
             add_log("Navigation paused.")
 
 threading.Thread(target=voice_listener, daemon=True).start()
