@@ -2,3 +2,8 @@ ultralytics
 opencv-python
 gtts
 pygame
+pyttsx3
+SpeechRecognition
+pyaudio
+pillow
+scipy
