@@ -1,3 +1,5 @@
+import os
+os.add_dll_directory(r"C:\Users\aadit\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\lib")
 import torch
 import cv2
 import numpy as np
@@ -28,13 +30,13 @@ class DepthYOLOPipeline:
         self.device = torch.device("cuda" if use_gpu and torch.cuda.is_available() else "cpu")
         print(f"Loading MiDaS depth model on {self.device}...")
         
-        self.midas = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
+        self.midas = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
         self.midas.to(self.device)
         self.midas.eval()
         
         # Load transforms
         midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
-        self.transform = midas_transforms.dpt_transform
+        self.transform = midas_transforms.small_transform
         # Initialize Scene Classifier
         print("Loading scene classification model...")
         self.scene_classifier = SceneClassifier(use_gpu=use_gpu)

@@ -13,7 +13,8 @@ class AudioFeedbackSystem:
         # Track announcements to avoid repetition
         self.announcement_queue = deque(maxlen=5)
         self.last_announcement_time = {}
-        self.cooldown_seconds = 3  # Don't repeat same object within 3 seconds
+        self.cooldown_seconds = 3.0  # Don't repeat same object for 3 seconds
+        self.speaking = False    # Don't repeat same object within 3 seconds
         
         # Distance thresholds for priority
         self.CRITICAL_DISTANCE = 1.0  # meters - very close
